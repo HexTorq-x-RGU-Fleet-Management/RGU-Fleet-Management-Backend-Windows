@@ -1,0 +1,10 @@
+{
+  "sourceRepository": "https://github.com/HexTorq-CCTV-Camera-Web/Hik-Vision",
+  "sourceTag": "standalone-baseline-2026-10-25",
+  "sourcePath": "v3",
+  "schemaFiles": {
+    "grants.sql": "5d162d8e629bbec872954d0bf80d83ac344d7f8c54e80f30027b7ea2172361f7",
+    "schema.sql": "f3d4ab6105ff2fd0a71c65b026f3bc20382779dfe4d3679ae201bd3d63cc5bb6"
+  },
+  "frontendUiCopied": false
+}

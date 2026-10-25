@@ -1,0 +1,30 @@
+{
+  "name": "rgu-fleet-management-backend-windows",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.mjs",
+    "test": "node --env-file-if-exists=.env --test test/*.test.mjs",
+    "test:unit": "node --test test/access.test.mjs test/config.test.mjs test/deployment.test.mjs",
+    "test:audio": "python vendor/windows-sdk/native/test_audio.py",
+    "test:video": "python vendor/windows-sdk/native/test_smooth.py",
+    "check:sdk": "python tools/check-sdk.py",
+    "setup:local": "node tools/setup-local.mjs",
+    "db:status": "node tools/local-db.mjs status",
+    "db:stop": "node tools/local-db.mjs stop",
+    "check": "node tools/check-source.mjs",
+    "prepare:db": "python tools/prepare-postgres.py",
+    "test:all": "node tools/run-tests.mjs",
+    "format": "prettier --write server.mjs lib tools test package.json *.md"
+  },
+  "dependencies": {
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.10"
+  }
+}

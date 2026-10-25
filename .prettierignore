@@ -1,0 +1,6 @@
+.local
+data
+node_modules
+vendor
+package-lock.json
+reports
