@@ -1,5 +1,9 @@
 # Windows backend rules
 
+Product model: docs/FLEET-PRODUCT.md. Buses map one recorder and one combined
+GPS/fuel device. Keep tenant isolation, stable device mapping, timestamps and
+source labels. Never infer channel health from recorder online status alone.
+
 Work in this repository; do not import sibling source. Frontend, Linux backend,
 reference archives and VPS changes require their own task scope.
 Preserve tenant/RLS isolation, authoritative sessions, grants and encrypted state.

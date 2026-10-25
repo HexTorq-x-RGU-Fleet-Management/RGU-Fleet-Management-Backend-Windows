@@ -4,8 +4,8 @@
 
 | Check                                           | Result                                                  |
 | ----------------------------------------------- | ------------------------------------------------------- |
-| JavaScript syntax and local source dependencies | 48 modules pass                                         |
-| Node/PostgreSQL/API suite                       | 81 results pass, including nested subtests              |
+| JavaScript syntax and local source dependencies | 50 modules pass                                         |
+| Node/PostgreSQL/API suite                       | 83 results pass, including nested subtests              |
 | Native audio                                    | 6 tests pass                                            |
 | Native video                                    | 4 tests pass                                            |
 | Installed Windows SDK                           | x64 DLL loading and expected entry points pass          |
@@ -18,6 +18,10 @@ The configured suite has zero failures or skips. Reproduce with
 Python 3.13.15, PyAV 19.0.1 and Pillow 12.3.0 were available on this machine.
 
 ## Coverage
+
+- Fleet HTTP CRUD and forced PostgreSQL RLS across two workspaces, one-to-one
+  mappings, vendor-shaped mock telemetry, deduplicated history, device remapping,
+  member grants/denials and cascade removal. No real vendor API was contacted.
 
 - Superadmin-only approval and password support; pending/suspended access denial.
 - Authentication setup races, password policy, forced changes, expiration/logout

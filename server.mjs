@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { runtimeConfig } from './lib/config.mjs';
 import { httpPolicy, frontendOriginsFromEnv } from './lib/http-policy.mjs';
 import { Database, HttpError } from './lib/database.mjs';
+import { Fleet } from './lib/fleet.mjs';
 import { Auth, tokenHash } from './lib/auth.mjs';
 import { Workspaces } from './lib/workspaces.mjs';
 import { Cameras } from './lib/cameras.mjs';
@@ -80,6 +81,7 @@ export function createSaas({
   const attempts = new Map(),
     connecting = new Set();
   const audit = new AuditLog(db);
+  const fleet = new Fleet(db);
   const recovery = new ProviderRecovery(db, cipher, cameras, {
     onRecovered: (id) => hub.closeTenant(id),
   });
@@ -464,6 +466,27 @@ export function createSaas({
           connecting.delete(principal.tenantId);
         }
       }
+      if (url.pathname === '/api/fleet/buses' && req.method === 'GET')
+        return json(res, 200, await fleet.list(token));
+      if (url.pathname === '/api/fleet/buses' && req.method === 'POST')
+        return json(res, 200, await fleet.save(token, await body(req)));
+      if (url.pathname === '/api/fleet/buses/remove' && req.method === 'POST')
+        return json(res, 200, await fleet.remove(token, (await body(req)).id));
+      if (url.pathname === '/api/fleet/mock/poll' && req.method === 'POST')
+        return json(res, 200, await fleet.pollMock(token));
+      if (url.pathname === '/api/fleet/telemetry' && req.method === 'GET')
+        return json(res, 200, await fleet.latest(token));
+      if (url.pathname === '/api/fleet/history' && req.method === 'GET')
+        return json(
+          res,
+          200,
+          await fleet.history(
+            token,
+            url.searchParams.get('busId'),
+            Number(url.searchParams.get('from')),
+            Number(url.searchParams.get('to')),
+          ),
+        );
       if (url.pathname === '/api/devices' && req.method === 'GET') {
         try {
           return json(res, 200, await cameras.devices(token));

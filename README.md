@@ -6,6 +6,11 @@ separate repositories and were not modified by this extraction.
 
 Repository: https://github.com/HexTorq-x-RGU-Fleet-Management/RGU-Fleet-Management-Backend-Windows
 
+Fleet extension: bus configuration now maps imported recorders and GPS/fuel
+devices, with PostgreSQL persistence, tenant/member policies, mock polling and
+history APIs. See [fleet API](docs/FLEET-API.md) and [product direction](docs/FLEET-PRODUCT.md).
+The React preview is separate; authenticated frontend fleet wiring remains pending.
+
 ## Requirements and local setup
 
 Windows x64, Node 24.x, Python media packages and the authorized installed
