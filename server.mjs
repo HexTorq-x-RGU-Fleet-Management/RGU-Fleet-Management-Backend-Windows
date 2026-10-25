@@ -5,6 +5,7 @@ import { runtimeConfig } from './lib/config.mjs';
 import { httpPolicy, frontendOriginsFromEnv } from './lib/http-policy.mjs';
 import { Database, HttpError } from './lib/database.mjs';
 import { Fleet } from './lib/fleet.mjs';
+import { WorkspaceUi, ChannelAvailability } from './lib/workspace-ui.mjs';
 import { Auth, tokenHash } from './lib/auth.mjs';
 import { Workspaces } from './lib/workspaces.mjs';
 import { Cameras } from './lib/cameras.mjs';
@@ -82,6 +83,8 @@ export function createSaas({
     connecting = new Set();
   const audit = new AuditLog(db);
   const fleet = new Fleet(db);
+  const workspaceUi = new WorkspaceUi(db);
+  const availability = new ChannelAvailability(db);
   const recovery = new ProviderRecovery(db, cipher, cameras, {
     onRecovered: (id) => hub.closeTenant(id),
   });
@@ -90,6 +93,7 @@ export function createSaas({
   };
   hub.onStreamHealth = (event) => {
     void health.observeStream(event).catch(() => {});
+    void availability.observe(event).catch(() => {});
   };
   const cookie = (res, token) => res.setHeader('Set-Cookie', policy.cookie(token));
   function throttle(req) {
@@ -191,7 +195,8 @@ export function createSaas({
       healthTenant = principal.tenantId;
       const clientUser =
         req.headers['x-saas-user'] ||
-        (['/api/live/events', '/api/live/audio-events'].includes(url.pathname)
+        (['/api/live/events', '/api/live/audio-events'].includes(url.pathname) ||
+        url.pathname.startsWith('/api/recordings/')
           ? url.searchParams.get('user')
           : null);
       if (clientUser && clientUser !== principal.id)
@@ -224,6 +229,37 @@ export function createSaas({
           403,
           'password-change-required',
         );
+      if (url.pathname === '/api/ui/preferences') {
+        if (req.method === 'GET') return json(res, 200, await workspaceUi.preferences(token));
+        if (req.method === 'POST')
+          return json(res, 200, await workspaceUi.preferences(token, await body(req)));
+      }
+      if (url.pathname === '/api/workspace' && req.method === 'GET') {
+        const prefs = await workspaceUi.preferences(token);
+        if (principal.role === 'superadmin')
+          return json(res, 200, {
+            user: principal,
+            preferences: prefs,
+            devices: [],
+            buses: [],
+            provider: null,
+            telemetry: null,
+          });
+        const [devices, buses, provider, telemetry] = await Promise.all([
+          cameras.devices(token, false),
+          fleet.list(token),
+          cameras.status(token),
+          fleet.latest(token),
+        ]);
+        return json(res, 200, {
+          user: principal,
+          preferences: prefs,
+          devices: await availability.annotate(token, devices.devices),
+          buses: buses.buses,
+          provider,
+          telemetry,
+        });
+      }
       if (url.pathname === '/api/platform/health' && req.method === 'GET')
         return json(res, 200, await health.snapshot(token, url.searchParams));
       const healthAction = url.pathname.match(
@@ -489,7 +525,11 @@ export function createSaas({
         );
       if (url.pathname === '/api/devices' && req.method === 'GET') {
         try {
-          return json(res, 200, await cameras.devices(token));
+          const result = await cameras.devices(token);
+          return json(res, 200, {
+            ...result,
+            devices: await availability.annotate(token, result.devices),
+          });
         } catch (error) {
           if (error.code === 'provider-auth-required') {
             hub.closeTenant(principal.tenantId);
@@ -498,17 +538,34 @@ export function createSaas({
           throw error;
         }
       }
-      if (url.pathname === '/api/previews/frame' && req.method === 'GET')
-        return json(
-          res,
-          200,
-          await hub.preview(
-            token,
-            principal,
-            url.searchParams.get('deviceId'),
-            Number(url.searchParams.get('channel')),
-          ),
-        );
+      if (url.pathname === '/api/previews/frame' && req.method === 'GET') {
+        const deviceId = url.searchParams.get('deviceId'),
+          channel = Number(url.searchParams.get('channel'));
+        try {
+          const image = await hub.preview(token, principal, deviceId, channel);
+          await availability.observe({
+            viewer: tokenHash(token),
+            tenantId: principal.tenantId,
+            deviceId,
+            channel,
+            ok: true,
+            observedAt: image.capturedAt,
+          });
+          return json(res, 200, image);
+        } catch (error) {
+          await availability
+            .observe({
+              viewer: tokenHash(token),
+              tenantId: principal.tenantId,
+              deviceId,
+              channel,
+              ok: false,
+              code: error.code,
+            })
+            .catch(() => {});
+          throw error;
+        }
+      }
       const viewer = hub.viewer(token, principal);
       if (url.pathname === '/api/live/events' && req.method === 'GET')
         return viewer.subscribe(res, { separateAudio: true });

@@ -1,5 +1,10 @@
 # Windows backend rules
 
+Production camera inventory, channel health and media must use the actual
+Hik-Connect/SDK integration. Mock GPS/fuel observations are stored as JSONB with
+source=mock. Synthetic devices/media exist only in the isolated acceptance tool,
+never imported into server.mjs or seeded into the application database.
+
 Product model: docs/FLEET-PRODUCT.md. Buses map one recorder and one combined
 GPS/fuel device. Keep tenant isolation, stable device mapping, timestamps and
 source labels. Never infer channel health from recorder online status alone.

@@ -14,6 +14,7 @@ export class Viewer {
   attach(slot) {
     const live = slot.live;
     if (this.events.size && !slot.unwatch && slot.live?.watchFrames) slot.unwatch = slot.live.watchFrames(frame => {
+      this.onFrame?.(slot, live);
       for (const res of this.events) {
         if (frame.h264 && res.writableLength >= 2_000_000) { res.destroy(); continue; }
         this.send(res, 'frame', { slot: slot.id, deviceId: live.deviceId, channel: live.channel, quality: live.quality, ...frame });

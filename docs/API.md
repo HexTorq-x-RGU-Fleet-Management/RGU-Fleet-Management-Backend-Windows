@@ -1,7 +1,7 @@
 # API-only extraction
 
-This preserves V3 route semantics. The React frontend is not yet wired to all live
-endpoints. Server authorization applies regardless of browser preview roles.
+This preserves V3 route semantics and supports the separate authenticated React
+frontend. Every API derives permissions from the server session.
 
 | Area           | Routes / responsibilities                                        |
 | -------------- | ---------------------------------------------------------------- |
@@ -13,6 +13,7 @@ endpoints. Server authorization applies regardless of browser preview roles.
 | Cameras        | /api/devices, /api/previews/frame                                |
 | Media          | Authenticated start/stop/status and separate video/audio events  |
 | Preferences    | /api/preferences                                                 |
+| Workspace UI   | GET /api/workspace; GET/POST /api/ui/preferences                 |
 | Recordings     | Authenticated clip storage/settings/download/deletion            |
 | Audit          | /api/audit with role and workspace scope                         |
 | Health         | Superadmin monitoring and acknowledge/resolve                    |
@@ -27,6 +28,21 @@ and required JSON, CSRF, user-binding, recording and range headers. Wildcard
 credentialed CORS is unsupported. SameSite=None requires an HTTPS PUBLIC_ORIGIN
 and Secure cookies. Use matching loopback hosts locally.
 
-Authenticated SSE/video and PCM audio remain migration transport. Setting a
-frontend environment alone does not implement session/device wiring or verify
-live cameras. The Linux backend must implement matching behavior separately.
+Authenticated SSE/video and PCM audio remain the current transport. The React
+client decodes actual received H264/JPEG frames and selected-camera PCM audio.
+The Linux backend must implement matching behavior separately.
+
+`/api/workspace` returns the principal, PostgreSQL UI preferences, permitted cached
+real inventory, buses and stored telemetry. UI writes validate known fields and
+are scoped to the authenticated user. `db/workspace.sql` enforces row policies.
+Channel availability is unknown until observed through the real preview/playback
+path; recorder online alone does not prove a channel works. Observations expire
+after five minutes, reject older timestamps and reset on provider account changes.
+Cached frames retain their original observation time. `playbackReady` reflects
+actual SDK authorization rather than the existence of a device list.
+
+Requests may bind the expected user with X-Saas-User, and live sessions with
+X-Hik-Connection. EventSource and recording video URLs carry the expected identity
+as query parameters because these browser elements cannot set custom headers.
+These identifiers are not credentials; the session cookie and server grants remain
+required. CORS explicitly allows both identity headers for approved origins.

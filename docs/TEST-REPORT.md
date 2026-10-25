@@ -4,8 +4,8 @@
 
 | Check                                           | Result                                                  |
 | ----------------------------------------------- | ------------------------------------------------------- |
-| JavaScript syntax and local source dependencies | 50 modules pass                                         |
-| Node/PostgreSQL/API suite                       | 83 results pass, including nested subtests              |
+| JavaScript syntax and local source dependencies | 54 modules pass                                         |
+| Node/PostgreSQL/API suite                       | 84 results pass, including nested subtests              |
 | Native audio                                    | 6 tests pass                                            |
 | Native video                                    | 4 tests pass                                            |
 | Installed Windows SDK                           | x64 DLL loading and expected entry points pass          |
@@ -19,6 +19,8 @@ Python 3.13.15, PyAV 19.0.1 and Pillow 12.3.0 were available on this machine.
 
 ## Coverage
 
+- Per-user UI preferences, validated fields, tenant-scoped channel observations,
+  account-change invalidation and missing-SDK playback authorization reporting.
 - Fleet HTTP CRUD and forced PostgreSQL RLS across two workspaces, one-to-one
   mappings, vendor-shaped mock telemetry, deduplicated history, device remapping,
   member grants/denials and cascade removal. No real vendor API was contacted.
@@ -53,10 +55,9 @@ initialization/login/playback functions or cloud APIs. DLL availability alone do
 not prove a camera will play or that the installed account is currently authorized.
 
 The original V3 browser-only recovery-view tests were not copied into backend
-scope. No legacy frontend was included just to satisfy those two tests. The backend
-retains 75 baseline results plus 6 new configuration/transport results.
+scope. No legacy frontend was included just to satisfy those two tests.
 
 No Linux runtime tests, VPS changes or production database access occurred.
-The React frontend repository was not modified or claimed connected to live data.
-The private PostgreSQL instance remains available for local development; the
-temporary API used by the CLI smoke check was stopped.
+The separate React frontend now has authenticated integration and isolated browser
+tests; those synthetic tests do not prove physical camera availability. The private
+PostgreSQL instance and normal API remain available for local development.

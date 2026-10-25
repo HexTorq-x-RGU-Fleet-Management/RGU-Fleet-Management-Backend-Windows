@@ -19,6 +19,7 @@
     "check": "node tools/check-source.mjs",
     "prepare:db": "python tools/prepare-postgres.py",
     "test:all": "node tools/run-tests.mjs",
+    "test:acceptance:serve": "node tools/serve-acceptance.mjs",
     "format": "prettier --write server.mjs lib tools test package.json *.md"
   },
   "dependencies": {

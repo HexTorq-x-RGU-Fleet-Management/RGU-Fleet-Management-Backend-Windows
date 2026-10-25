@@ -9,7 +9,8 @@ Repository: https://github.com/HexTorq-x-RGU-Fleet-Management/RGU-Fleet-Manageme
 Fleet extension: bus configuration now maps imported recorders and GPS/fuel
 devices, with PostgreSQL persistence, tenant/member policies, mock polling and
 history APIs. See [fleet API](docs/FLEET-API.md) and [product direction](docs/FLEET-PRODUCT.md).
-The React preview is separate; authenticated frontend fleet wiring remains pending.
+The separate React frontend uses authenticated APIs for fleet, accounts, cameras,
+recordings, team and platform screens. It has no business-data fallback.
 
 ## Requirements and local setup
 
@@ -65,9 +66,8 @@ FRONTEND_ORIGINS=http://127.0.0.1:3107,http://localhost:3107
 COOKIE_SAME_SITE=Strict
 ```
 
-Use matching frontend/backend hostnames for cookies. The future frontend API
-origin is http://127.0.0.1:8101. This change does not configure the frontend or
-replace its preview state with live sessions/devices. CORS permits exact origins
+Use matching frontend/backend hostnames for cookies. Configure the frontend with
+NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8101. CORS permits exact origins
 only; writes retain X-Hik-Local/JSON checks. Vercel cross-site use needs HTTPS
 PUBLIC_ORIGIN and Secure cookies for COOKIE_SAME_SITE=None. The API remains
 loopback-bound; public reverse-proxy deployment is separate work.
@@ -78,7 +78,8 @@ PostgreSQL stores tenants, users, sessions, grants, encrypted provider state,
 audit events and alerts. Recordings remain in private data/. Passwords use scrypt,
 sessions are HttpOnly, provider state uses tenant-bound AES-GCM, and the runtime
 role cannot be superuser or bypass RLS. Existing account/grant changes continue
-to revoke affected sessions and close scoped streams. SQL schema/grants are unchanged.
+to revoke affected sessions and close scoped streams. Local setup also applies
+db/workspace.sql for per-user UI preferences and tenant-scoped channel observations.
 
 DATABASE_URL can configure a future VPS database. Use a separate migration owner
 and restricted runtime role; the preserved SQL assumes cam_app. Remote startup
@@ -92,3 +93,12 @@ recordings, credentials, captures, logs and downloads out of Git.
 No real provider login, DVR stream, VPS action or Linux migration was performed.
 Browser microphone forwarding and historical DVR playback remain deferred.
 Real renewal and sustained camera load require separate live acceptance.
+
+## Isolated React acceptance testing
+
+Run `npm run test:acceptance:serve`, then `npm run test:e2e` in the frontend repo.
+This loopback-only API uses port 8109 and a disposable PostgreSQL database. All
+synthetic recorders, telemetry, map tiles and encoded media originate on this test
+backend. The ordinary server never imports it. Stop it with a POST to
+http://127.0.0.1:8109/__acceptance/stop to remove its database and temporary files.
+Do not expose this fixture or use its accounts in the application database.
