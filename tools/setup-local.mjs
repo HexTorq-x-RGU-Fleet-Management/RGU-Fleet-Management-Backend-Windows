@@ -106,6 +106,7 @@ await migrate.connect();
 try {
   await migrate.query('BEGIN');
   await migrate.query(await readFile(path.join(project, 'db/schema.sql'), 'utf8'));
+  await migrate.query(await readFile(path.join(project, 'db/google-auth.sql'), 'utf8'));
   await migrate.query(await readFile(path.join(project, 'db/grants.sql'), 'utf8'));
   await migrate.query(await readFile(path.join(project, 'db/fleet.sql'), 'utf8'));
   await migrate.query(await readFile(path.join(project, 'db/workspace.sql'), 'utf8'));

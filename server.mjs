@@ -170,12 +170,17 @@ export function createSaas({
       }
       if (
         req.method === 'POST' &&
-        ['/api/auth/setup', '/api/auth/signup', '/api/auth/login'].includes(url.pathname)
+        ['/api/auth/setup', '/api/auth/signup', '/api/auth/login', '/api/auth/google/login'].includes(url.pathname)
       ) {
         throttle(req);
         const input = await body(req);
         try {
           if (url.pathname.endsWith('/signup')) return json(res, 201, await auth.signup(input));
+          if (url.pathname.endsWith('/google/login')) {
+            const result = await auth.googleLogin(input);
+            cookie(res, result.token);
+            return json(res, 200, { authenticated: true, user: result.principal });
+          }
           if (url.pathname.endsWith('/setup') && (!localHost(host.hostname) || publicOrigin))
             throw new HttpError('Finish initial platform setup locally.', 403);
           const result = await (url.pathname.endsWith('/setup')
@@ -210,6 +215,10 @@ export function createSaas({
         hub.closeSession(token);
         cookie(res, '');
         return json(res, 200, { authenticated: false });
+      }
+      if (url.pathname === '/api/auth/google/link' && req.method === 'POST') {
+        const input = await body(req);
+        return json(res, 200, await auth.linkGoogle(token, input));
       }
       if (url.pathname === '/api/auth/password' && req.method === 'POST') {
         const input = await body(req);
