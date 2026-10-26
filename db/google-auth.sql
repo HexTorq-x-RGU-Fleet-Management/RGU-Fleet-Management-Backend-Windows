@@ -1,6 +1,10 @@
 ALTER TABLE cam.users ADD COLUMN IF NOT EXISTS google_subject text;
-ALTER TABLE cam.users ADD CONSTRAINT users_google_subject_format
-  CHECK (google_subject IS NULL OR google_subject ~ '^[0-9A-Za-z._-]{1,255}$');
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='users_google_subject_format') THEN
+    ALTER TABLE cam.users ADD CONSTRAINT users_google_subject_format
+      CHECK (google_subject IS NULL OR google_subject ~ '^[0-9A-Za-z._-]{1,255}$');
+  END IF;
+END $$;
 CREATE UNIQUE INDEX IF NOT EXISTS users_google_subject_unique
   ON cam.users(google_subject) WHERE google_subject IS NOT NULL;
 
