@@ -7,6 +7,7 @@
     "node": "24.x"
   },
   "scripts": {
+    "dev": "node --env-file-if-exists=.env server.mjs",
     "start": "node --env-file-if-exists=.env server.mjs",
     "test": "node --env-file-if-exists=.env --test test/*.test.mjs",
     "test:unit": "node --test test/access.test.mjs test/config.test.mjs test/deployment.test.mjs",
