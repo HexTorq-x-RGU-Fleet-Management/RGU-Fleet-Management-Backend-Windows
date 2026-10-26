@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, writeFile, rename, unlink, open, readdir, statfs } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
 
-const MB = 1024 ** 2, GB = 1024 ** 3, DAY = 86400000;
+const MB = 1024 ** 2, GB = 1_000_000_000, DAY = 86400000;
 const validId = value => typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(value);
 export class RecordingError extends Error {
   constructor(message, status = 400) { super(message); this.status = status; }

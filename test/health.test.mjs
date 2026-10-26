@@ -267,7 +267,7 @@ test('superadmin-only monitoring tracks failure, recovery, storage pressure and 
       try {
         await health.sample();
         const model = await snapshot();
-        assert.equal(model.metrics.recordingStorage.maxBytes, 10 * 1024 ** 3);
+        assert.equal(model.metrics.recordingStorage.maxBytes, 10_000_000_000);
         assert.ok(model.alerts.some((a) => a.title === 'Recording storage could not be checked'));
       } finally {
         health.disk = original;
