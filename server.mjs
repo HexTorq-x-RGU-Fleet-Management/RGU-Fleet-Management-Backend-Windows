@@ -216,9 +216,14 @@ export function createSaas({
         cookie(res, '');
         return json(res, 200, { authenticated: false });
       }
+      if (url.pathname === '/api/auth/google/status' && req.method === 'GET')
+        return json(res, 200, await auth.googleStatus(token));
       if (url.pathname === '/api/auth/google/link' && req.method === 'POST') {
         const input = await body(req);
         return json(res, 200, await auth.linkGoogle(token, input));
+      }
+      if (url.pathname === '/api/auth/google/unlink' && req.method === 'POST') {
+        return json(res, 200, await auth.unlinkGoogle(token));
       }
       if (url.pathname === '/api/auth/password' && req.method === 'POST') {
         const input = await body(req);
