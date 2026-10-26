@@ -9,7 +9,7 @@ export class RecordingError extends Error {
   constructor(message, status = 400) { super(message); this.status = status; }
 }
 export class RecordingStore {
-  constructor(directory, { now = Date.now, maxBytes = 5 * GB, reserveBytes = 256 * MB } = {}) {
+  constructor(directory, { now = Date.now, maxBytes = 10 * GB, reserveBytes = 256 * MB } = {}) {
     this.directory = path.resolve(directory); this.now = now; this.reserveBytes = reserveBytes;
     this.index = { version: 1, settings: { retentionDays: 7, maxBytes }, clips: [] };
     this.queue = Promise.resolve(); this.lastCleanupAt = null;
