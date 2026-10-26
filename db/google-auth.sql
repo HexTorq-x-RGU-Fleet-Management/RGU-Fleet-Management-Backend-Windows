@@ -8,6 +8,9 @@ END $$;
 CREATE UNIQUE INDEX IF NOT EXISTS users_google_subject_unique
   ON cam.users(google_subject) WHERE google_subject IS NOT NULL;
 
+GRANT SELECT(google_subject) ON cam.users TO cam_app;
+GRANT UPDATE(google_subject) ON cam.users TO cam_app;
+
 CREATE OR REPLACE FUNCTION cam.google_login_record(subject text)
 RETURNS SETOF cam.users
 LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog,cam AS $$

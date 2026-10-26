@@ -1,8 +1,8 @@
 GRANT USAGE ON SCHEMA cam TO cam_app;
     GRANT SELECT,UPDATE ON cam.tenants TO cam_app;
-    GRANT SELECT(id,tenant_id,email,full_name,role,status,auth_version,must_change_password,created_at,google_subject) ON cam.users TO cam_app;
+    GRANT SELECT(id,tenant_id,email,full_name,role,status,auth_version,must_change_password,created_at) ON cam.users TO cam_app;
     GRANT INSERT ON cam.users TO cam_app;
-    GRANT UPDATE(full_name,status,password_salt,password_hash,must_change_password,auth_version,google_subject) ON cam.users TO cam_app;
+    GRANT UPDATE(full_name,status,password_salt,password_hash,must_change_password,auth_version) ON cam.users TO cam_app;
     GRANT SELECT,INSERT,UPDATE ON cam.devices TO cam_app;
     GRANT SELECT,INSERT,UPDATE,DELETE ON cam.grants,cam.providers,cam.preferences TO cam_app;
     GRANT SELECT,INSERT ON cam.audit TO cam_app;
