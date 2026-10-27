@@ -82,12 +82,8 @@ export function createSaas({
   const attempts = new Map(),
     connecting = new Set();
   const audit = new AuditLog(db);
-  const fleet = new Fleet(db);
-  const wheelseyePoll = fleet.startWheelseyePolling({
-    tenantId: process.env.WHEELSEYE_TENANT_ID,
-    adminUserId: process.env.WHEELSEYE_ADMIN_USER_ID,
-    intervalMs: Math.max(60000, Number(process.env.WHEELSEYE_POLL_INTERVAL_MS) || 60000),
-  });
+  const fleet = new Fleet(db, cipher);
+  const wheelseyePoll = fleet.startWheelseyePolling({ intervalMs: 60000 });
   const workspaceUi = new WorkspaceUi(db);
   const availability = new ChannelAvailability(db);
   const recovery = new ProviderRecovery(db, cipher, cameras, {
@@ -536,6 +532,15 @@ export function createSaas({
         return json(res, 200, await fleet.pollMock(token));
       if (url.pathname === '/api/fleet/vendor/poll' && req.method === 'POST')
         return json(res, 200, await fleet.pollWheelseye(token));
+      if (url.pathname === '/api/fleet/wheelseye/sources' && req.method === 'GET')
+        return json(res, 200, await fleet.wheelseyeSources(token));
+      if (url.pathname === '/api/fleet/wheelseye/sources' && req.method === 'POST')
+        return json(res, 200, await fleet.addWheelseyeSource(token, await body(req)));
+      const sourceDelete = url.pathname.match(
+        /^\/api\/fleet\/wheelseye\/sources\/([a-f0-9-]{36})$/i,
+      );
+      if (sourceDelete && req.method === 'DELETE')
+        return json(res, 200, await fleet.removeWheelseyeSource(token, sourceDelete[1]));
       if (url.pathname === '/api/fleet/telemetry' && req.method === 'GET')
         return json(res, 200, await fleet.latest(token));
       if (url.pathname === '/api/fleet/history' && req.method === 'GET')

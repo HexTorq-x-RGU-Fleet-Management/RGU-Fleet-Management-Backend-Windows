@@ -109,6 +109,7 @@ try {
   await migrate.query(await readFile(path.join(project, 'db/google-auth.sql'), 'utf8'));
   await migrate.query(await readFile(path.join(project, 'db/grants.sql'), 'utf8'));
   await migrate.query(await readFile(path.join(project, 'db/fleet.sql'), 'utf8'));
+  await migrate.query(await readFile(path.join(project, 'db/wheelseye.sql'), 'utf8'));
   await migrate.query(await readFile(path.join(project, 'db/workspace.sql'), 'utf8'));
   await migrate.query('COMMIT');
 } catch (error) {

@@ -12,7 +12,9 @@ tenant admins implicitly. Both new tables use forced PostgreSQL RLS.
 | POST   | /api/fleet/buses                                      | Create or replace editable fields; omit id to create             |
 | POST   | /api/fleet/buses/remove                               | Remove by id; cascades stored bus telemetry                      |
 | POST   | /api/fleet/mock/poll                                  | Persist last 2 hours of simulated minute samples                 |
-| POST   | /api/fleet/vendor/poll                                | Fetch WheelsEye current locations and persist mapped GPS samples |
+| GET    | /api/fleet/wheelseye/sources                         | List safe WheelsEye source/device metadata                     |
+| POST   | /api/fleet/wheelseye/sources                         | Validate, encrypt and add a WheelsEye URL                      |
+| DELETE | /api/fleet/wheelseye/sources/:id                     | Remove a workspace WheelsEye source                            |
 | GET    | /api/fleet/telemetry                                  | Latest stored mapped-device samples, vendor-shaped envelope      |
 | GET    | /api/fleet/history?busId=UUID&from=SECONDS&to=SECONDS | Chronological history; maximum 24-hour window                    |
 
@@ -29,11 +31,11 @@ they do not represent recovered real observations. Mock rows older than 24 hours
 are cleaned during an admin poll. Unmapped buses return no telemetry.
 Latest reads return at most 1000 visible buses. Vendor pagination remains future
 adapter work; there is no arbitrary URL proxy or public telemetry ingestion URL.
-The WheelsEye poll endpoint is server-only and requires `WHEELSEYE_ACCESS_TOKEN_FILE`.
-Its current-location response contains GPS, speed, ignition and device power status;
-it does not contain fuel litres or fuel percentage. Automatic minute polling is not
-The optional one-workspace background poller runs every `WHEELSEYE_POLL_INTERVAL_MS`
-(default 60 seconds) when `WHEELSEYE_TENANT_ID` and `WHEELSEYE_ADMIN_USER_ID` are set.
+WheelsEye URLs are accepted only from workspace admins, validated against the official
+`https://api.wheelseye.com/currentLoc` host, and encrypted before storage. The backend
+polls every configured source every 60 seconds. Device master records and location logs
+are stored separately. The current-location response contains GPS, speed, ignition and
+device power status; it does not contain fuel litres or fuel percentage.
 
 Apply additive db/fleet.sql after schema.sql/grants.sql as migration owner.
 npm run setup:local applies this only to the private local database. Baseline SQL
