@@ -6,14 +6,15 @@ read buses/history only through nonempty viewing grants for the mapped recorder.
 Favorites are intersected with member channel grants. Superadmins do not become
 tenant admins implicitly. Both new tables use forced PostgreSQL RLS.
 
-| Method | Route | Result |
-| --- | --- | --- |
-| GET | /api/fleet/buses | Visible buses |
-| POST | /api/fleet/buses | Create or replace editable fields; omit id to create |
-| POST | /api/fleet/buses/remove | Remove by id; cascades stored bus telemetry |
-| POST | /api/fleet/mock/poll | Persist last 2 hours of simulated minute samples |
-| GET | /api/fleet/telemetry | Latest stored mapped-device samples, vendor-shaped envelope |
-| GET | /api/fleet/history?busId=UUID&from=SECONDS&to=SECONDS | Chronological history; maximum 24-hour window |
+| Method | Route                                                 | Result                                                           |
+| ------ | ----------------------------------------------------- | ---------------------------------------------------------------- |
+| GET    | /api/fleet/buses                                      | Visible buses                                                    |
+| POST   | /api/fleet/buses                                      | Create or replace editable fields; omit id to create             |
+| POST   | /api/fleet/buses/remove                               | Remove by id; cascades stored bus telemetry                      |
+| POST   | /api/fleet/mock/poll                                  | Persist last 2 hours of simulated minute samples                 |
+| POST   | /api/fleet/vendor/poll                                | Fetch WheelsEye current locations and persist mapped GPS samples |
+| GET    | /api/fleet/telemetry                                  | Latest stored mapped-device samples, vendor-shaped envelope      |
+| GET    | /api/fleet/history?busId=UUID&from=SECONDS&to=SECONDS | Chronological history; maximum 24-hour window                    |
 
 Bus fields: id, busNumber, registration, driverName, driverPhone, routeName,
 recorderId, telemetryDeviceId, favoriteChannels. Mapping fields may be null.
@@ -28,7 +29,11 @@ they do not represent recovered real observations. Mock rows older than 24 hours
 are cleaned during an admin poll. Unmapped buses return no telemetry.
 Latest reads return at most 1000 visible buses. Vendor pagination remains future
 adapter work; there is no arbitrary URL proxy or public telemetry ingestion URL.
-No background poller or actual vendor credential is enabled.
+The WheelsEye poll endpoint is server-only and requires `WHEELSEYE_ACCESS_TOKEN_FILE`.
+Its current-location response contains GPS, speed, ignition and device power status;
+it does not contain fuel litres or fuel percentage. Automatic minute polling is not
+The optional one-workspace background poller runs every `WHEELSEYE_POLL_INTERVAL_MS`
+(default 60 seconds) when `WHEELSEYE_TENANT_ID` and `WHEELSEYE_ADMIN_USER_ID` are set.
 
 Apply additive db/fleet.sql after schema.sql/grants.sql as migration owner.
 npm run setup:local applies this only to the private local database. Baseline SQL

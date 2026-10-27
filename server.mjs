@@ -83,6 +83,11 @@ export function createSaas({
     connecting = new Set();
   const audit = new AuditLog(db);
   const fleet = new Fleet(db);
+  const wheelseyePoll = fleet.startWheelseyePolling({
+    tenantId: process.env.WHEELSEYE_TENANT_ID,
+    adminUserId: process.env.WHEELSEYE_ADMIN_USER_ID,
+    intervalMs: Number(process.env.WHEELSEYE_POLL_INTERVAL_MS || 60000),
+  });
   const workspaceUi = new WorkspaceUi(db);
   const availability = new ChannelAvailability(db);
   const recovery = new ProviderRecovery(db, cipher, cameras, {
@@ -170,7 +175,12 @@ export function createSaas({
       }
       if (
         req.method === 'POST' &&
-        ['/api/auth/setup', '/api/auth/signup', '/api/auth/login', '/api/auth/google/login'].includes(url.pathname)
+        [
+          '/api/auth/setup',
+          '/api/auth/signup',
+          '/api/auth/login',
+          '/api/auth/google/login',
+        ].includes(url.pathname)
       ) {
         throttle(req);
         const input = await body(req);
@@ -524,6 +534,8 @@ export function createSaas({
         return json(res, 200, await fleet.remove(token, (await body(req)).id));
       if (url.pathname === '/api/fleet/mock/poll' && req.method === 'POST')
         return json(res, 200, await fleet.pollMock(token));
+      if (url.pathname === '/api/fleet/vendor/poll' && req.method === 'POST')
+        return json(res, 200, await fleet.pollWheelseye(token));
       if (url.pathname === '/api/fleet/telemetry' && req.method === 'GET')
         return json(res, 200, await fleet.latest(token));
       if (url.pathname === '/api/fleet/history' && req.method === 'GET')
@@ -733,6 +745,7 @@ export function createSaas({
     clearInterval(cleanup);
     clearInterval(recoveryTimer);
     clearInterval(healthTimer);
+    wheelseyePoll?.();
     void recovery.stop();
     hub.close();
   });
