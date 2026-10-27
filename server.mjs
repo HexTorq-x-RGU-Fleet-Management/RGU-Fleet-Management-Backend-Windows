@@ -120,6 +120,10 @@ export function createSaas({
       const requestOrigin = 'http://' + (req.headers.host || ''),
         url = new URL(req.url, requestOrigin),
         host = new URL(requestOrigin);
+      // Accept both direct API paths and reverse-proxy paths such as /rgu/api/...
+      // so the frontend remains compatible with either nginx location style.
+      if (url.pathname === '/rgu') url.pathname = '/';
+      else if (url.pathname.startsWith('/rgu/')) url.pathname = url.pathname.slice(4);
       if (!localHost(host.hostname) && (!publicOrigin || new URL(publicOrigin).host !== host.host))
         throw new HttpError('Host is not allowed.', 403);
       policy.apply(req, res, requestOrigin);
