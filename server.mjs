@@ -547,6 +547,8 @@ export function createSaas({
         return json(res, 200, await fleet.removeWheelseyeSource(token, sourceDelete[1]));
       if (url.pathname === '/api/fleet/telemetry' && req.method === 'GET')
         return json(res, 200, await fleet.latest(token));
+      if (url.pathname === '/api/fleet/live' && req.method === 'GET')
+        return json(res, 200, await fleet.liveWheelseye(token, url.searchParams.get('busId')));
       if (url.pathname === '/api/fleet/history' && req.method === 'GET')
         return json(
           res,
