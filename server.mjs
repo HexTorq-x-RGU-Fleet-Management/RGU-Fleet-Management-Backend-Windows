@@ -86,7 +86,7 @@ export function createSaas({
   const wheelseyePoll = fleet.startWheelseyePolling({
     tenantId: process.env.WHEELSEYE_TENANT_ID,
     adminUserId: process.env.WHEELSEYE_ADMIN_USER_ID,
-    intervalMs: Number(process.env.WHEELSEYE_POLL_INTERVAL_MS || 60000),
+    intervalMs: Math.max(60000, Number(process.env.WHEELSEYE_POLL_INTERVAL_MS) || 60000),
   });
   const workspaceUi = new WorkspaceUi(db);
   const availability = new ChannelAvailability(db);
