@@ -538,6 +538,10 @@ export function createSaas({
         return json(res, 200, await fleet.pollWheelseye(token));
       if (url.pathname === '/api/fleet/wheelseye/sources' && req.method === 'GET')
         return json(res, 200, await fleet.wheelseyeSources(token));
+      if (url.pathname === '/api/fleet/wheelseye/refresh' && req.method === 'POST')
+        return json(res, 200, await fleet.refreshWheelseyeSources(token));
+      if (url.pathname === '/api/fleet/wheelseye/device' && req.method === 'GET')
+        return json(res, 200, await fleet.wheelseyeDevice(token, url.searchParams.get('sourceId'), url.searchParams.get('deviceId')));
       if (url.pathname === '/api/fleet/wheelseye/sources' && req.method === 'POST')
         return json(res, 200, await fleet.addWheelseyeSource(token, await body(req)));
       const sourceDelete = url.pathname.match(
