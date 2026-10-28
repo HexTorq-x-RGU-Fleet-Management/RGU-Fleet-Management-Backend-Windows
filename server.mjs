@@ -83,7 +83,9 @@ export function createSaas({
     connecting = new Set();
   const audit = new AuditLog(db);
   const fleet = new Fleet(db, cipher);
-  const wheelseyePoll = fleet.startWheelseyePolling({ intervalMs: 60000 });
+  const wheelseyePoll = fleet.startWheelseyePolling({
+    intervalMs: Math.max(10000, Number(process.env.WHEELSEYE_POLL_INTERVAL_MS || 60000)),
+  });
   const workspaceUi = new WorkspaceUi(db);
   const availability = new ChannelAvailability(db);
   const recovery = new ProviderRecovery(db, cipher, cameras, {

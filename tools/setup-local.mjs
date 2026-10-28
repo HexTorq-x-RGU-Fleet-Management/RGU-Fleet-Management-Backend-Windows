@@ -112,6 +112,7 @@ try {
   await migrate.query(await readFile(path.join(project, 'db/wheelseye.sql'), 'utf8'));
   await migrate.query(await readFile(path.join(project, 'db/wheelseye-admin.sql'), 'utf8'));
   await migrate.query(await readFile(path.join(project, 'db/wheelseye-live.sql'), 'utf8'));
+  await migrate.query(await readFile(path.join(project, 'db/wheelseye-10s.sql'), 'utf8'));
   await migrate.query(await readFile(path.join(project, 'db/workspace.sql'), 'utf8'));
   await migrate.query('COMMIT');
 } catch (error) {
