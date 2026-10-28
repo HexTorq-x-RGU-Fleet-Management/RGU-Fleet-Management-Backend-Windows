@@ -84,7 +84,7 @@ export function createSaas({
   const audit = new AuditLog(db);
   const fleet = new Fleet(db, cipher);
   const wheelseyePoll = fleet.startWheelseyePolling({
-    intervalMs: Math.max(10000, Number(process.env.WHEELSEYE_POLL_INTERVAL_MS || 60000)),
+    intervalMs: Math.max(5000, Number(process.env.WHEELSEYE_POLL_INTERVAL_MS || 60000)),
   });
   const workspaceUi = new WorkspaceUi(db);
   const availability = new ChannelAvailability(db);
