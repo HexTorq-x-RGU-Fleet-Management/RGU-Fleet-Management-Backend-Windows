@@ -109,6 +109,7 @@ try {
   await migrate.query(await readFile(path.join(project, 'db/google-auth.sql'), 'utf8'));
   await migrate.query(await readFile(path.join(project, 'db/grants.sql'), 'utf8'));
   await migrate.query(await readFile(path.join(project, 'db/fleet.sql'), 'utf8'));
+  await migrate.query(await readFile(path.join(project, 'db/speed-monitoring.sql'), 'utf8'));
   await migrate.query(await readFile(path.join(project, 'db/wheelseye.sql'), 'utf8'));
   await migrate.query(await readFile(path.join(project, 'db/wheelseye-admin.sql'), 'utf8'));
   await migrate.query(await readFile(path.join(project, 'db/wheelseye-live.sql'), 'utf8'));
