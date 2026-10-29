@@ -86,6 +86,11 @@ export function createSaas({
   const wheelseyePoll = fleet.startWheelseyePolling({
     intervalMs: Math.max(5000, Number(process.env.WHEELSEYE_POLL_INTERVAL_MS || 60000)),
   });
+  const wheelseyeRetention = setInterval(() => {
+    void fleet.cleanupWheelseyeLogs(24).then(() => health.taskRecovered('wheelseye-retention')).catch(() => health.taskFailed('wheelseye-retention'));
+  }, 15 * 60 * 1000);
+  wheelseyeRetention.unref();
+  void fleet.cleanupWheelseyeLogs(24).catch(() => {});
   const workspaceUi = new WorkspaceUi(db);
   const availability = new ChannelAvailability(db);
   const recovery = new ProviderRecovery(db, cipher, cameras, {
@@ -766,6 +771,7 @@ export function createSaas({
     clearInterval(cleanup);
     clearInterval(recoveryTimer);
     clearInterval(healthTimer);
+    clearInterval(wheelseyeRetention);
     wheelseyePoll?.();
     void recovery.stop();
     hub.close();
