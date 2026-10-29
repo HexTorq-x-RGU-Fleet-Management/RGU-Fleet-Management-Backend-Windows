@@ -88,9 +88,8 @@ export function createSaas({
   });
   const wheelseyeRetention = setInterval(() => {
     void fleet.cleanupWheelseyeLogs(24).then(() => health.taskRecovered('wheelseye-retention')).catch(() => health.taskFailed('wheelseye-retention'));
-  }, 15 * 60 * 1000);
+  }, 24 * 60 * 60 * 1000);
   wheelseyeRetention.unref();
-  void fleet.cleanupWheelseyeLogs(24).catch(() => {});
   const workspaceUi = new WorkspaceUi(db);
   const availability = new ChannelAvailability(db);
   const recovery = new ProviderRecovery(db, cipher, cameras, {
