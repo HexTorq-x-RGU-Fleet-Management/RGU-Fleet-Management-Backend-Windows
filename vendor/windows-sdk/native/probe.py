@@ -82,6 +82,13 @@ def main():
         start = bind("OpenSDK_StartRealPlayEx", [C.c_char_p, C.c_void_p, C.c_char_p, C.c_int, C.c_char_p])
         start_quality = bind("OpenSDK_StartPlayWithStreamType", [C.c_char_p, C.c_void_p, C.c_char_p, C.c_int, C.c_char_p, C.c_int])
         stop = bind("OpenSDK_StopRealPlayEx", [C.c_char_p])
+        historical = bool(config.get("historical"))
+        playback_start = bind("OpenSDK_StartPlayBackEx", [C.c_char_p, C.c_void_p, C.c_char_p, C.c_int, C.c_char_p, C.c_char_p, C.c_char_p]) if historical else None
+        playback_stop = bind("OpenSDK_StopPlayBackEx", [C.c_char_p]) if historical and hasattr(sdk, "OpenSDK_StopPlayBackEx") else (bind("OpenSDK_StopPlayBack", [C.c_char_p]) if historical and hasattr(sdk, "OpenSDK_StopPlayBack") else None)
+        playback_pause = bind("OpenSDK_PlayBackPause", [C.c_char_p]) if historical and hasattr(sdk, "OpenSDK_PlayBackPause") else None
+        playback_resume = bind("OpenSDK_PlayBackResume", [C.c_char_p]) if historical and hasattr(sdk, "OpenSDK_PlayBackResume") else None
+        playback_seek = bind("OpenSDK_PlayBackSeek", [C.c_char_p, C.c_char_p]) if historical and hasattr(sdk, "OpenSDK_PlayBackSeek") else None
+        playback_scale = bind("OpenSDK_SetPlayBackScale", [C.c_char_p, C.c_float]) if historical and hasattr(sdk, "OpenSDK_SetPlayBackScale") else None
         initialized = False
         try:
             result = init(b"https://iindiaopenauth.ezvizlife.com", b"https://iindiaopen.ezvizlife.com", app_id.encode())
@@ -228,8 +235,21 @@ def main():
             if decoder:
                 decoder.start()
             @message_callback
-            def on_message(_session, kind, code, _message, _user):
+            def on_message(_session, kind, code, message, _user):
                 emit("playback-event", event=int(kind), code=int(code))
+                if historical and int(kind) in (20, 21):
+                    # Search metadata is bounded and whitelisted; opaque callback
+                    # text is never forwarded because it may contain credentials.
+                    try:
+                        raw = C.string_at(message, 65536).split(b"\x00", 1)[0].decode("utf-8", "ignore") if message else ""
+                        value = json.loads(raw) if raw.startswith("{") else None
+                        if isinstance(value, dict):
+                            allowed = {k: value[k] for k in ("startTime", "endTime", "beginTime", "fileName", "size", "recordType", "channel") if k in value}
+                            emit("record-file" if int(kind) == 20 else "record-search-end", **allowed)
+                        else:
+                            emit("record-search-end" if int(kind) == 21 else "record-file")
+                    except Exception:
+                        emit("record-search-end" if int(kind) == 21 else "record-file")
                 if kind == 0:
                     stopping.set()
             @data_callback
@@ -245,6 +265,35 @@ def main():
                         hik_audio.feed(int(kind), C.string_at(pointer, size))
                     if kind == 2 and decoder:
                         media.push(C.string_at(pointer, size))
+            if config.get("search"):
+                @message_callback
+                def search_message(_session, kind, code, message, _user):
+                    if int(kind) == 20:
+                        try:
+                            raw = C.string_at(message, 65536).split(b"\x00", 1)[0].decode("utf-8", "ignore") if message else ""
+                            value = json.loads(raw) if raw.startswith("{") else {}
+                            if isinstance(value, dict):
+                                allowed = {k: value[k] for k in ("startTime", "endTime", "beginTime", "fileName", "size", "recordType", "channel") if k in value}
+                                emit("record-file", **allowed)
+                        except Exception:
+                            emit("record-file")
+                    elif int(kind) == 21:
+                        emit("record-search-end", code=int(code))
+                        stopping.set()
+                search_session, search_length = C.c_char_p(), C.c_int()
+                result = allocate(search_message, None, C.byref(search_session), C.byref(search_length))
+                emit("allocate-search", result=result)
+                if result:
+                    return 1
+                try:
+                    set_search = bind("OpenSDK_StartSearchEx", [C.c_char_p, C.c_char_p, C.c_int, C.c_char_p, C.c_char_p])
+                    result = set_search(search_session, serial.encode(), int(config.get("channel", 1)), str(config.get("startTime", "")).encode(), str(config.get("stopTime", "")).encode())
+                    emit("start-search", result=result, sdkError=last_error())
+                    if result == 0:
+                        stopping.wait(float(config.get("searchTimeout", 20)))
+                    return 0 if result == 0 else 1
+                finally:
+                    release(search_session)
             playback_session, session_length = C.c_char_p(), C.c_int()
             result = allocate(on_message, None, C.byref(playback_session), C.byref(session_length))
             emit("allocate-playback", result=result)
@@ -261,7 +310,10 @@ def main():
                 emit("set-video-callback", result=result)
                 if result:
                     return 1
-                if config.get("streamType") in (1, 2):
+                if historical:
+                    result = playback_start(playback_session, None, serial.encode(), int(config.get("channel", 1)), None,
+                                            str(config.get("startTime", "")).encode(), str(config.get("stopTime", "")).encode())
+                elif config.get("streamType") in (1, 2):
                     result = start_quality(playback_session, None, serial.encode(), int(config.get("channel", 1)), None, config["streamType"])
                 else:
                     result = start(playback_session, None, serial.encode(), int(config.get("channel", 1)), None)
@@ -281,6 +333,22 @@ def main():
                                 continue
                             if command == "preview":
                                 preview_requested.set()
+                            elif historical and command in ("pause", "resume", "stop"):
+                                fn = {"pause": playback_pause, "resume": playback_resume, "stop": playback_stop}.get(command)
+                                if fn:
+                                    emit("playback-control", command=command, result=fn(playback_session))
+                                if command == "stop":
+                                    stopping.set()
+                            elif historical and command == "seek" and playback_seek:
+                                value = json.loads(line)
+                                emit("playback-control", command="seek", result=playback_seek(playback_session, str(value.get("time", "")).encode()))
+                            elif historical and command == "seek":
+                                emit("playback-control", command="seek", result=-1)
+                            elif historical and command == "scale" and playback_scale:
+                                value = json.loads(line)
+                                emit("playback-control", command="scale", result=playback_scale(playback_session, float(value.get("scale", 1))))
+                            elif historical and command == "scale":
+                                emit("playback-control", command="scale", result=-1)
                             elif command == "talk-heartbeat":
                                 talk_ping[0] = time.monotonic()
                             elif command in ("talk-start", "talk-stop"):
@@ -324,7 +392,7 @@ def main():
                 if talking and talk_stop:
                     talk_stop(playback_session)
                 if started:
-                    stop(playback_session)
+                    (playback_stop if historical and playback_stop else stop)(playback_session)
                 stopping.set()
                 media.finish()
                 if hik_audio:

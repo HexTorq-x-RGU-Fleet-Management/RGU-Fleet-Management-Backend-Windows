@@ -5,10 +5,11 @@ import { fileURLToPath } from 'node:url';
 export class LiveError extends Error { constructor(message, status = 502, code) { super(message); this.status = status; this.code = code; } }
 
 export class NativeLive extends EventEmitter {
-  constructor(credentials, device, channel, quality, { runner = spawn, delivery = 'mjpeg', previewOnly = false } = {}) {
+  constructor(credentials, device, channel, quality, { runner = spawn, delivery = 'mjpeg', previewOnly = false, historical = false, startTime = '', stopTime = '' } = {}) {
     super();
     this.deviceId = device.id; this.deviceName = device.name; this.channel = channel; this.quality = quality;
     this.delivery = delivery;
+    this.historical = Boolean(historical); this.startTime = startTime; this.stopTime = stopTime;
     this.state = 'connecting'; this.clients = new Set(); this.lastFrame = null; this.lastFrameAt = 0;
     this.audioClients = new Set(); this.audioState = 'unknown'; this.lastAudioAt = 0; this.audioSamples = 0;
     this.frameObservers = new Set(); this.audioObservers = new Set(); this.talkSupported = false; this.talkState = 'stopped'; this.talkWanted = false;
@@ -100,11 +101,19 @@ export class NativeLive extends EventEmitter {
     child.on('error', () => this.fail('The video receiver could not start. Check its server installation.', 'receiver-unavailable'));
     child.on('close', () => { if (!['stopped', 'failed'].includes(this.state)) this.fail('The camera connection ended. Start the channel again.'); });
     child.stdin.write(JSON.stringify({ accessToken: credentials.sdkAccessToken || credentials.sessionId, serial: device.serial, channel,
-      streamType: quality === 'hd' ? 1 : 2, play: true, decode: true, stream: true, delivery, previewOnly }) + '\n');
+      streamType: quality === 'hd' ? 1 : 2, play: true, decode: true, stream: true, delivery, previewOnly,
+      historical: this.historical, startTime: this.startTime, stopTime: this.stopTime }) + '\n');
     this.deadline = setTimeout(() => this.fail('No decoded video arrived. Try SD or check the camera in the official app.', 'stream-timeout'), 40000);
     this.ready.then(() => { clearTimeout(this.deadline); if (this.state !== 'playing') return; this.idle = setTimeout(() => { if (!this.clients.size && !this.frameObservers.size && !this.audioObservers.size) this.stop(); }, 15000); }, () => {});
     this.watchdog = setInterval(() => { if (this.state === 'playing' && Date.now() - this.lastFrameAt > 12000) this.fail('Live video stopped arriving. Start the channel again.'); }, 3000);
     this.watchdog.unref();
+  }
+  control(command, value) {
+    if (!this.historical || this.state === 'stopped' || this.state === 'failed') throw new LiveError('Historical playback is not active.', 409);
+    const payload = { command };
+    if (command === 'seek') payload.time = value;
+    if (command === 'scale') payload.scale = Number(value);
+    this.child.stdin.write(JSON.stringify(payload) + '\n');
   }
   preview({ maxAge = 300000, timeout = 15000 } = {}) {
     if (this.lastPreview && Date.now() - this.lastPreview.capturedAt < maxAge) return Promise.resolve(this.lastPreview);
@@ -124,7 +133,7 @@ export class NativeLive extends EventEmitter {
       lastFrameAt: this.lastFrameAt || null, audio: this.audioState === 'available', audioState: this.audioState,
       lastAudioAt: this.lastAudioAt || null, audioSamples: this.audioSamples, talkSupported: this.talkSupported,
       audioCodec: this.audioCodec || null, audioError: this.audioError || null,
-      audioDecoder: this.audioDecoder || null,
+      audioDecoder: this.audioDecoder || null, historical: this.historical,
       talkState: this.talkState, delivery: this.delivery, videoStats: this.videoStats || null, error: this.error || null, errorCode: this.errorCode || null };
   }
   watchFrames(observer) {

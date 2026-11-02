@@ -86,9 +86,15 @@ export function createSaas({
   const wheelseyePoll = fleet.startWheelseyePolling({
     intervalMs: Math.max(5000, Number(process.env.WHEELSEYE_POLL_INTERVAL_MS || 60000)),
   });
-  const wheelseyeRetention = setInterval(() => {
-    void fleet.cleanupWheelseyeLogs(24).then(() => health.taskRecovered('wheelseye-retention')).catch(() => health.taskFailed('wheelseye-retention'));
-  }, 24 * 60 * 60 * 1000);
+  const wheelseyeRetention = setInterval(
+    () => {
+      void fleet
+        .cleanupWheelseyeLogs(24)
+        .then(() => health.taskRecovered('wheelseye-retention'))
+        .catch(() => health.taskFailed('wheelseye-retention'));
+    },
+    24 * 60 * 60 * 1000,
+  );
   wheelseyeRetention.unref();
   const workspaceUi = new WorkspaceUi(db);
   const availability = new ChannelAvailability(db);
@@ -547,9 +553,23 @@ export function createSaas({
       if (url.pathname === '/api/fleet/wheelseye/refresh' && req.method === 'POST')
         return json(res, 200, await fleet.refreshWheelseyeSources(token));
       if (url.pathname === '/api/fleet/wheelseye/device' && req.method === 'GET')
-        return json(res, 200, await fleet.wheelseyeDevice(token, url.searchParams.get('sourceId'), url.searchParams.get('deviceId')));
+        return json(
+          res,
+          200,
+          await fleet.wheelseyeDevice(
+            token,
+            url.searchParams.get('sourceId'),
+            url.searchParams.get('deviceId'),
+          ),
+        );
       if (url.pathname === '/api/fleet/wheelseye/source' && req.method === 'GET')
-        return json(res, 200, await fleet.wheelseyeSourceDiagnostics(token, url.searchParams.get('sourceId'), { live: url.searchParams.get('live') === '1' }));
+        return json(
+          res,
+          200,
+          await fleet.wheelseyeSourceDiagnostics(token, url.searchParams.get('sourceId'), {
+            live: url.searchParams.get('live') === '1',
+          }),
+        );
       if (url.pathname === '/api/fleet/wheelseye/source/poll' && req.method === 'POST')
         return json(res, 200, await fleet.pollWheelseyeSource(token, (await body(req)).sourceId));
       if (url.pathname === '/api/fleet/wheelseye/sources' && req.method === 'POST')
@@ -636,6 +656,25 @@ export function createSaas({
         );
       if (url.pathname === '/api/live/start' && req.method === 'POST')
         return json(res, 200, await hub.start(token, principal, await body(req)));
+      if (url.pathname === '/api/playback/search' && req.method === 'POST') {
+        const input = await body(req);
+        return json(res, 200, await hub.search(token, principal, input));
+      }
+      if (url.pathname === '/api/playback/start' && req.method === 'POST') {
+        const input = await body(req);
+        return json(
+          res,
+          200,
+          await hub.start(token, principal, {
+            ...input,
+            historical: true,
+            delivery: input.delivery || 'mjpeg',
+            quality: input.quality || 'sd',
+          }),
+        );
+      }
+      if (url.pathname === '/api/playback/control' && req.method === 'POST')
+        return json(res, 200, await hub.control(token, principal, await body(req)));
       if (url.pathname === '/api/live/stop-all' && req.method === 'POST') {
         viewer.stopAll();
         return json(res, 200, { state: 'stopped' });
