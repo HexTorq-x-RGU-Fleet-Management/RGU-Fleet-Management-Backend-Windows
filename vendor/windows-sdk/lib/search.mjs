@@ -12,8 +12,21 @@ export function searchRecordings(credentials, device, channel, startTime, stopTi
       buffer += chunk.toString(); const lines = buffer.split('\n'); buffer = lines.pop();
       for (const line of lines) { let event; try { event = JSON.parse(line); } catch { continue; }
         if (event.stage === 'record-file') recordings.push({ startTime: event.startTime || event.beginTime || startTime, stopTime: event.endTime || stopTime, fileName: event.fileName || null, size: Number.isFinite(event.size) ? event.size : null, recordType: event.recordType || null });
-        if (event.stage === 'record-search-end') finish(null, recordings);
-        if (event.stage === 'start-search' && event.result !== 0) finish(new Error('The recorder rejected the recording search.'));
+          if (event.stage === 'record-search-end') finish(null, recordings);
+          if (event.stage === 'record-search-failed')
+            finish(
+              new Error(
+                event.code === 39 || event.code === 3067 || event.code === 3070
+                  ? 'No DVR recording exists in the selected period.'
+                  : `The DVR recording search failed${event.code ? ` (SDK ${event.code})` : ''}.`,
+              ),
+            );
+          if (event.stage === 'start-search' && event.result !== 0)
+            finish(
+              new Error(
+                `The recorder rejected the recording search${event.sdkError ? ` (SDK ${event.sdkError})` : ''}.`,
+              ),
+            );
       }
     });
     child.on('error', error => finish(error));

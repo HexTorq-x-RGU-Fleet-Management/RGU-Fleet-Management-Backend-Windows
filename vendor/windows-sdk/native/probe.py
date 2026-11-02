@@ -271,14 +271,39 @@ def main():
                     if int(kind) == 20:
                         try:
                             raw = (C.cast(message, C.c_char_p).value or b"")[:65536].decode("utf-8", "ignore") if message else ""
-                            value = json.loads(raw) if raw.startswith("{") else {}
-                            if isinstance(value, dict):
-                                allowed = {k: value[k] for k in ("startTime", "endTime", "beginTime", "fileName", "size", "recordType", "channel") if k in value}
-                                emit("record-file", **allowed)
+                            value = json.loads(raw.lstrip()) if raw.lstrip().startswith("{") else None
+                            if not isinstance(value, dict):
+                                emit("record-file-unparsed", messageBytes=len(raw.encode("utf-8")))
+                                return
+                            files = value.get("FileList", value.get("fileList"))
+                            entries = files if isinstance(files, list) else [value]
+                            emitted = 0
+                            for entry in entries:
+                                if not isinstance(entry, dict):
+                                    continue
+                                start = entry.get("StartTime", entry.get("startTime", entry.get("BeginTime", entry.get("beginTime"))))
+                                stop = entry.get("EndTime", entry.get("endTime", entry.get("StopTime", entry.get("stopTime"))))
+                                if not start and not stop:
+                                    continue
+                                emit(
+                                    "record-file",
+                                    startTime=start,
+                                    endTime=stop,
+                                    fileName=entry.get("FileName", entry.get("fileName")),
+                                    size=entry.get("FileSize", entry.get("fileSize", entry.get("Size", entry.get("size")))),
+                                    recordType=entry.get("RecordType", entry.get("recordType")),
+                                    channel=entry.get("Channel", entry.get("channel")),
+                                )
+                                emitted += 1
+                            if not emitted:
+                                emit("record-file-empty")
                         except Exception:
-                            emit("record-file")
+                            emit("record-file-unparsed")
                     elif int(kind) == 21:
                         emit("record-search-end", code=int(code))
+                        stopping.set()
+                    elif int(kind) == 22:
+                        emit("record-search-failed", code=int(code))
                         stopping.set()
                 search_session, search_length = C.c_char_p(), C.c_int()
                 result = allocate(search_message, None, C.byref(search_session), C.byref(search_length))
