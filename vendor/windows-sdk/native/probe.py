@@ -241,7 +241,7 @@ def main():
                     # Search metadata is bounded and whitelisted; opaque callback
                     # text is never forwarded because it may contain credentials.
                     try:
-                        raw = C.string_at(message, 65536).split(b"\x00", 1)[0].decode("utf-8", "ignore") if message else ""
+                        raw = (C.cast(message, C.c_char_p).value or b"")[:65536].decode("utf-8", "ignore") if message else ""
                         value = json.loads(raw) if raw.startswith("{") else None
                         if isinstance(value, dict):
                             allowed = {k: value[k] for k in ("startTime", "endTime", "beginTime", "fileName", "size", "recordType", "channel") if k in value}
@@ -270,7 +270,7 @@ def main():
                 def search_message(_session, kind, code, message, _user):
                     if int(kind) == 20:
                         try:
-                            raw = C.string_at(message, 65536).split(b"\x00", 1)[0].decode("utf-8", "ignore") if message else ""
+                            raw = (C.cast(message, C.c_char_p).value or b"")[:65536].decode("utf-8", "ignore") if message else ""
                             value = json.loads(raw) if raw.startswith("{") else {}
                             if isinstance(value, dict):
                                 allowed = {k: value[k] for k in ("startTime", "endTime", "beginTime", "fileName", "size", "recordType", "channel") if k in value}

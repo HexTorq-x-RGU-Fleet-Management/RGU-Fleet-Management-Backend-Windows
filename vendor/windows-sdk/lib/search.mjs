@@ -17,7 +17,7 @@ export function searchRecordings(credentials, device, channel, startTime, stopTi
       }
     });
     child.on('error', error => finish(error));
-    child.on('close', code => { if (!settled) finish(code === 0 ? null : new Error('The recording search receiver stopped.')); });
-    child.stdin.write(JSON.stringify({ accessToken: credentials.sdkAccessToken || credentials.sessionId, serial: device.serial, channel, startTime, stopTime, search: true }) + '\n');
+    child.on('close', code => { if (!settled) finish(code === 0 ? null : new Error('The recording search receiver stopped.'), recordings); });
+    child.stdin.write(JSON.stringify({ accessToken: credentials.sdkAccessToken || credentials.sessionId, serial: device.serial, channel, startTime, stopTime, search: true, play: true }) + '\n');
   });
 }
