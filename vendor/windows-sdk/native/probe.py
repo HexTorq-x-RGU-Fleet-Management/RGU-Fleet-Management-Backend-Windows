@@ -286,8 +286,12 @@ def main():
                 if result:
                     return 1
                 try:
-                    set_search = bind("OpenSDK_StartSearchEx", [C.c_char_p, C.c_char_p, C.c_int, C.c_char_p, C.c_char_p])
-                    result = set_search(search_session, serial.encode(), int(config.get("channel", 1)), str(config.get("startTime", "")).encode(), str(config.get("stopTime", "")).encode())
+                    if hasattr(sdk, "OpenSDK_StartSearchEx"):
+                        set_search = bind("OpenSDK_StartSearchEx", [C.c_char_p, C.c_char_p, C.c_int, C.c_char_p, C.c_char_p])
+                        result = set_search(search_session, serial.encode(), int(config.get("channel", 1)), str(config.get("startTime", "")).encode(), str(config.get("stopTime", "")).encode())
+                    else:
+                        set_search = bind("OpenSDK_StartSearchExtend", [C.c_char_p, C.c_char_p, C.c_int, C.c_char_p, C.c_char_p, C.c_int])
+                        result = set_search(search_session, serial.encode(), int(config.get("channel", 1)), str(config.get("startTime", "")).encode(), str(config.get("stopTime", "")).encode(), 1)
                     emit("start-search", result=result, sdkError=last_error())
                     if result == 0:
                         stopping.wait(float(config.get("searchTimeout", 20)))
