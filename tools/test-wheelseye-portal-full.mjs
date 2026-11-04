@@ -64,7 +64,7 @@ try {
         `${label} GPS`,
         () => client.getVehicleLive(vehicleId),
         (value) =>
-          `lat=${value?.latitude ?? 'n/a'} lon=${value?.longitude ?? 'n/a'} speed=${value?.speed ?? 'n/a'}`,
+          `coordinatesPresent=${Number.isFinite(Number(value?.latitude)) && Number.isFinite(Number(value?.longitude))} speed=${value?.speed ?? 'n/a'}`,
       );
       await call(
         `${label} fuel`,
