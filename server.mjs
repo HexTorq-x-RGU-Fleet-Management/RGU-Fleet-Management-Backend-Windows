@@ -5,7 +5,11 @@ import { runtimeConfig } from './lib/config.mjs';
 import { httpPolicy, frontendOriginsFromEnv } from './lib/http-policy.mjs';
 import { Database, HttpError } from './lib/database.mjs';
 import { Fleet } from './lib/fleet.mjs';
-import { WorkspaceUi, ChannelAvailability } from './lib/workspace-ui.mjs';
+import {
+  WorkspaceUi,
+  ChannelAvailability,
+  ChannelAvailabilityScheduler,
+} from './lib/workspace-ui.mjs';
 import { Auth, tokenHash } from './lib/auth.mjs';
 import { Workspaces } from './lib/workspaces.mjs';
 import { Cameras } from './lib/cameras.mjs';
@@ -98,6 +102,7 @@ export function createSaas({
   wheelseyeRetention.unref();
   const workspaceUi = new WorkspaceUi(db);
   const availability = new ChannelAvailability(db);
+  const availabilityScheduler = new ChannelAvailabilityScheduler(availability);
   const recovery = new ProviderRecovery(db, cipher, cameras, {
     onRecovered: (id) => hub.closeTenant(id),
   });
@@ -599,6 +604,14 @@ export function createSaas({
       if (url.pathname === '/api/devices' && req.method === 'GET') {
         try {
           const result = await cameras.devices(token);
+          void availabilityScheduler
+            .schedule({
+              token,
+              principal,
+              devices: result.devices,
+              preview: (deviceId, channel) => hub.preview(token, principal, deviceId, channel),
+            })
+            ?.catch(() => {});
           return json(res, 200, {
             ...result,
             devices: await availability.annotate(token, result.devices),
