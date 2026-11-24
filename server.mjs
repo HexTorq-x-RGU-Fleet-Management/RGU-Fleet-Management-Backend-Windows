@@ -103,6 +103,16 @@ export function createSaas({
   const workspaceUi = new WorkspaceUi(db);
   const availability = new ChannelAvailability(db);
   const availabilityScheduler = new ChannelAvailabilityScheduler(availability);
+  const warmCameraAvailability = async (sessionToken, actor, knownDevices = null) => {
+    if (!actor?.tenantId || actor.role === 'superadmin') return;
+    const devices = knownDevices ?? (await cameras.devices(sessionToken, false)).devices;
+    return availabilityScheduler.schedule({
+      token: sessionToken,
+      principal: actor,
+      devices,
+      preview: (deviceId, channel) => hub.preview(sessionToken, actor, deviceId, channel),
+    });
+  };
   const recovery = new ProviderRecovery(db, cipher, cameras, {
     onRecovered: (id) => hub.closeTenant(id),
   });
@@ -206,6 +216,7 @@ export function createSaas({
           if (url.pathname.endsWith('/google/login')) {
             const result = await auth.googleLogin(input);
             cookie(res, result.token);
+            void warmCameraAvailability(result.token, result.principal).catch(() => {});
             return json(res, 200, { authenticated: true, user: result.principal });
           }
           if (url.pathname.endsWith('/setup') && (!localHost(host.hostname) || publicOrigin))
@@ -218,6 +229,7 @@ export function createSaas({
             hub.closeSession(token);
           }
           cookie(res, result.token);
+          void warmCameraAvailability(result.token, result.principal).catch(() => {});
           return json(res, 200, { authenticated: true, user: result.principal });
         } finally {
           delete input.password;
@@ -292,6 +304,7 @@ export function createSaas({
           cameras.status(token),
           fleet.latest(token),
         ]);
+        void warmCameraAvailability(token, principal, devices.devices).catch(() => {});
         return json(res, 200, {
           user: principal,
           preferences: prefs,
@@ -604,14 +617,7 @@ export function createSaas({
       if (url.pathname === '/api/devices' && req.method === 'GET') {
         try {
           const result = await cameras.devices(token);
-          void availabilityScheduler
-            .schedule({
-              token,
-              principal,
-              devices: result.devices,
-              preview: (deviceId, channel) => hub.preview(token, principal, deviceId, channel),
-            })
-            ?.catch(() => {});
+          void warmCameraAvailability(token, principal, result.devices).catch(() => {});
           return json(res, 200, {
             ...result,
             devices: await availability.annotate(token, result.devices),
