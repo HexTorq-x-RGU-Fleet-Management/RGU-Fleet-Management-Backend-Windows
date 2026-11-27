@@ -562,6 +562,14 @@ export function createSaas({
         return json(res, 200, await fleet.save(token, await body(req)));
       if (url.pathname === '/api/fleet/buses/remove' && req.method === 'POST')
         return json(res, 200, await fleet.remove(token, (await body(req)).id));
+      if (url.pathname === '/api/fleet/drivers' && req.method === 'GET')
+        return json(res, 200, await fleet.drivers(token));
+      if (url.pathname === '/api/fleet/drivers' && req.method === 'POST')
+        return json(res, 200, await fleet.saveDriver(token, await body(req)));
+      if (url.pathname === '/api/fleet/drivers/assign' && req.method === 'POST')
+        return json(res, 200, await fleet.assignDriver(token, await body(req)));
+      if (url.pathname === '/api/fleet/drivers/remove' && req.method === 'POST')
+        return json(res, 200, await fleet.removeDriver(token, (await body(req)).id));
       if (url.pathname === '/api/fleet/mock/poll' && req.method === 'POST')
         return json(res, 200, await fleet.pollMock(token));
       if (url.pathname === '/api/fleet/vendor/poll' && req.method === 'POST')

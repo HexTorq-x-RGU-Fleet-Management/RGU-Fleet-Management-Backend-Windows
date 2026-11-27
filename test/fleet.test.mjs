@@ -4,7 +4,7 @@ import { once } from 'node:events';
 import { mkdtemp, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-import { Fleet, busInput, mockVehicle, validateEnvelope } from '../lib/fleet.mjs';
+import { Fleet, busInput, driverInput, mockVehicle, validateEnvelope } from '../lib/fleet.mjs';
 import { tokenHash } from '../lib/auth.mjs';
 import { postgresFixture } from './helpers.mjs';
 import { TenantStorage } from '../lib/storage.mjs';
@@ -22,6 +22,13 @@ const data = {
 };
 test('fleet inputs and vendor envelope reject malformed data and preserve Unix seconds', () => {
   assert.equal(busInput(data).registration, 'TN 37 TEST 01');
+  assert.deepEqual(driverInput({ fullName: '  Test Driver  ', phone: ' 9999999999 ' }), {
+    fullName: 'Test Driver',
+    phone: '9999999999',
+    status: 'active',
+  });
+  assert.throws(() => driverInput({ fullName: '', status: 'active' }));
+  assert.throws(() => driverInput({ fullName: 'Driver', status: 'unknown' }));
   assert.throws(() => busInput({ ...data, favoriteChannels: [0] }));
   assert.throws(() => busInput({ ...data, busNumber: '' }));
   const envelope = {
@@ -103,6 +110,18 @@ test('fleet HTTP CRUD, PostgreSQL RLS, mappings, mock history and member permiss
   const created = await call('/api/fleet/buses', alpha.token, data);
   assert.equal(created.status, 200, JSON.stringify(created.body));
   const bus = created.body.bus;
+  const createdDriver = await call('/api/fleet/drivers', alpha.token, {
+    fullName: 'Assigned Driver',
+    phone: '9000000000',
+  });
+  assert.equal(createdDriver.status, 200, JSON.stringify(createdDriver.body));
+  const driver = createdDriver.body.driver;
+  assert.equal((await call('/api/fleet/drivers', beta.token)).body.drivers.length, 0);
+  const assigned = await call('/api/fleet/drivers/assign', alpha.token, { busId: bus.id, driverId: driver.id });
+  assert.equal(assigned.status, 200, JSON.stringify(assigned.body));
+  assert.equal(assigned.body.bus.driverId, driver.id);
+  assert.equal(assigned.body.bus.driverName, 'Assigned Driver');
+  assert.equal((await call('/api/fleet/drivers/remove', alpha.token, { id: driver.id })).status, 409);
   assert.equal((await call('/api/fleet/buses', beta.token)).body.buses.length, 0);
   assert.equal((await call('/api/fleet/buses', beta.token, { ...data, id: bus.id })).status, 404);
   assert.equal(
@@ -156,6 +175,7 @@ test('fleet HTTP CRUD, PostgreSQL RLS, mappings, mock history and member permiss
     );
   });
   assert.equal((await call('/api/fleet/buses', login.token)).body.buses.length, 1);
+  assert.equal((await call('/api/fleet/drivers', login.token)).body.drivers.length, 1);
   assert.deepEqual(
     (await call('/api/fleet/buses', login.token)).body.buses[0].favoriteChannels,
     [1],
