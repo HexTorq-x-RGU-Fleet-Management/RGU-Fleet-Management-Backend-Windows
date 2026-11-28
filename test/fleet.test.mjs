@@ -4,7 +4,7 @@ import { once } from 'node:events';
 import { mkdtemp, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-import { Fleet, busInput, driverInput, mockVehicle, validateEnvelope } from '../lib/fleet.mjs';
+import { Fleet, busInput, driverInput, mockVehicle, routeInput, validateEnvelope } from '../lib/fleet.mjs';
 import { tokenHash } from '../lib/auth.mjs';
 import { postgresFixture } from './helpers.mjs';
 import { TenantStorage } from '../lib/storage.mjs';
@@ -29,6 +29,13 @@ test('fleet inputs and vendor envelope reject malformed data and preserve Unix s
   });
   assert.throws(() => driverInput({ fullName: '', status: 'active' }));
   assert.throws(() => driverInput({ fullName: 'Driver', status: 'unknown' }));
+  assert.deepEqual(routeInput({ name: '  Campus loop ', description: ' Main service ' }), {
+    name: 'Campus loop',
+    description: 'Main service',
+    status: 'active',
+  });
+  assert.throws(() => routeInput({ name: '', status: 'active' }));
+  assert.throws(() => routeInput({ name: 'Route', status: 'unknown' }));
   assert.throws(() => busInput({ ...data, favoriteChannels: [0] }));
   assert.throws(() => busInput({ ...data, busNumber: '' }));
   const envelope = {
@@ -122,6 +129,18 @@ test('fleet HTTP CRUD, PostgreSQL RLS, mappings, mock history and member permiss
   assert.equal(assigned.body.bus.driverId, driver.id);
   assert.equal(assigned.body.bus.driverName, 'Assigned Driver');
   assert.equal((await call('/api/fleet/drivers/remove', alpha.token, { id: driver.id })).status, 409);
+  const createdRoute = await call('/api/fleet/routes', alpha.token, {
+    name: 'Campus loop',
+    description: 'Main service route',
+  });
+  assert.equal(createdRoute.status, 200, JSON.stringify(createdRoute.body));
+  const routeRecord = createdRoute.body.route;
+  assert.equal((await call('/api/fleet/routes', beta.token)).body.routes.length, 0);
+  const routed = await call('/api/fleet/routes/assign', alpha.token, { busId: bus.id, routeId: routeRecord.id });
+  assert.equal(routed.status, 200, JSON.stringify(routed.body));
+  assert.equal(routed.body.bus.routeId, routeRecord.id);
+  assert.equal(routed.body.bus.routeName, 'Campus loop');
+  assert.equal((await call('/api/fleet/routes/remove', alpha.token, { id: routeRecord.id })).status, 409);
   assert.equal((await call('/api/fleet/buses', beta.token)).body.buses.length, 0);
   assert.equal((await call('/api/fleet/buses', beta.token, { ...data, id: bus.id })).status, 404);
   assert.equal(
@@ -176,6 +195,7 @@ test('fleet HTTP CRUD, PostgreSQL RLS, mappings, mock history and member permiss
   });
   assert.equal((await call('/api/fleet/buses', login.token)).body.buses.length, 1);
   assert.equal((await call('/api/fleet/drivers', login.token)).body.drivers.length, 1);
+  assert.equal((await call('/api/fleet/routes', login.token)).body.routes.length, 1);
   assert.deepEqual(
     (await call('/api/fleet/buses', login.token)).body.buses[0].favoriteChannels,
     [1],
